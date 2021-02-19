@@ -11,6 +11,7 @@ func Init() (zerolog.Logger, error) {
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 	zerolog.LevelFieldMarshalFunc = pinoLevel
+	zerolog.MessageFieldName = "msg"
 
 	hostname, _ := os.Hostname()
 	log := zerolog.New(os.Stdout).With().
