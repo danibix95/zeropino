@@ -1,47 +1,51 @@
 package zerologmia
 
 import (
+	"io"
 	"os"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
+
+	pinoModel "github.com/danibix95/zerolog-mia/internal"
 )
 
-// Init function creates a zerolog logger with default properties and custom style
-func Init() (zerolog.Logger, error) {
+// InitOptions These are the possible options that can be used to initialize the logger
+type InitOptions struct {
+	Level     string
+	UseTimeMs bool
+	Writer    io.Writer
+}
 
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
-	zerolog.LevelFieldMarshalFunc = pinoLevel
+// Init Creates a zerolog logger with default properties and custom style
+func Init(options InitOptions) (*zerolog.Logger, error) {
+	// global default configuration
 	zerolog.MessageFieldName = "msg"
+	zerolog.LevelFieldMarshalFunc = pinoModel.ConvertLevel
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	if options.UseTimeMs {
+		zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
+	}
+
+	var logWriter io.Writer = os.Stdout
+	if options.Writer != nil {
+		logWriter = options.Writer
+	}
+
+	logLevel, err := pinoModel.ParseLevel(options.Level)
+	if err != nil {
+		return nil, err
+	}
 
 	hostname, _ := os.Hostname()
-	log := zerolog.New(os.Stdout).With().
+	log := zerolog.New(logWriter).With().
 		Timestamp().
 		Int("pid", os.Getpid()).
 		Str("hostname", hostname).
 		Logger().
-		Level(zerolog.InfoLevel)
+		Level(logLevel)
 
-	return log, nil
-}
-
-func pinoLevel(l zerolog.Level) string {
-	switch l {
-	case zerolog.TraceLevel:
-		return "10"
-	case zerolog.DebugLevel:
-		return "20"
-	case zerolog.InfoLevel:
-		return "30"
-	case zerolog.WarnLevel:
-		return "40"
-	case zerolog.ErrorLevel:
-		return "50"
-	case zerolog.FatalLevel:
-		fallthrough
-	case zerolog.PanicLevel:
-		return "60"
-	case zerolog.NoLevel:
-		return ""
-	}
-	return ""
+	return &log, nil
 }

@@ -7,5 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- changelog
 - pre-commit configuration
 - custom default logger following Mia Platform logging guidelines
+- tests to verify custom logger behaviour
