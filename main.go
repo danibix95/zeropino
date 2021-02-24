@@ -17,18 +17,8 @@ type InitOptions struct {
 	Writer    io.Writer
 }
 
-// Init Creates a zerolog logger with default properties and custom style
+// Init Creates a zerolog logger with custom default properties and custom style
 func Init(options InitOptions) (*zerolog.Logger, error) {
-	// global default configuration
-	zerolog.MessageFieldName = "msg"
-	zerolog.LevelFieldMarshalFunc = pinoModel.ConvertLevel
-	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	if options.UseTimeMs {
-		zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
-	}
-
 	var logWriter io.Writer = os.Stdout
 	if options.Writer != nil {
 		logWriter = options.Writer
@@ -39,13 +29,35 @@ func Init(options InitOptions) (*zerolog.Logger, error) {
 		return nil, err
 	}
 
+	return createLogger(logWriter, logLevel, options.UseTimeMs), nil
+}
+
+// InitDefault Creates a zerolog logger with custom default properties
+// and custom style using predefined writer and log level
+func InitDefault() *zerolog.Logger {
+	return createLogger(os.Stdout, zerolog.InfoLevel, false)
+}
+
+func createLogger(writer io.Writer, level zerolog.Level, useTimeMs bool) *zerolog.Logger {
+	// global default configuration
+	zerolog.MessageFieldName = "msg"
+	zerolog.LevelFieldMarshalFunc = pinoModel.ConvertLevel
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	if useTimeMs {
+		zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
+	}
+
+	// ignore hostname in case of error
 	hostname, _ := os.Hostname()
-	log := zerolog.New(logWriter).With().
+
+	log := zerolog.New(writer).With().
 		Timestamp().
 		Int("pid", os.Getpid()).
 		Str("hostname", hostname).
 		Logger().
-		Level(logLevel)
+		Level(level)
 
-	return &log, nil
+	return &log
 }

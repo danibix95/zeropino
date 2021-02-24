@@ -26,10 +26,17 @@ func TestInit(t *testing.T) {
 	message := "Hello Mia!"
 
 	t.Run("Initialize Default Logger", func(t *testing.T) {
+		logger := InitDefault()
+
+		assert.Equal(t, logger.GetLevel(), zerolog.InfoLevel, "Default level value")
+		logger.Info().Msg(message)
+	})
+
+	t.Run("Initialize Logger without user options", func(t *testing.T) {
 		logger, err := Init(InitOptions{})
 
 		assert.NilError(t, err)
-		assert.Assert(t, err == nil, "Error getting default logger")
+		assert.Assert(t, err == nil, "Error getting logger without user options")
 		assert.Equal(t, logger.GetLevel(), zerolog.InfoLevel, "Default level value")
 
 		logger.Info().Msg(message)
