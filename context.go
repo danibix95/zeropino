@@ -1,4 +1,4 @@
-package zerologmia
+package zeropino
 
 import (
 	"context"

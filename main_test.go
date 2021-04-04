@@ -1,4 +1,4 @@
-package zerologmia
+package zeropino
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"gotest.tools/assert"
 
-	pinoModel "github.com/danibix95/zerolog-mia/internal"
+	pinoModel "github.com/danibix95/zeropino/internal"
 )
 
 type miaLog struct {
@@ -22,9 +22,11 @@ type miaLog struct {
 	Stack    interface{} `json:"error,omitempty"`
 }
 
-func TestInit(t *testing.T) {
-	message := "Hello Mia!"
+const message = "Hello Mia!"
+const unixTimestampLen = 10
+const unixTimestampMsLen = 13
 
+func TestInit(t *testing.T) {
 	t.Run("Initialize Default Logger", func(t *testing.T) {
 		logger := InitDefault()
 
@@ -35,10 +37,7 @@ func TestInit(t *testing.T) {
 	t.Run("Initialize Logger without user options", func(t *testing.T) {
 		logger, err := Init(InitOptions{})
 
-		assert.NilError(t, err)
-		assert.Assert(t, err == nil, "Error getting logger without user options")
-		assert.Equal(t, logger.GetLevel(), zerolog.InfoLevel, "Default level value")
-
+		verifyInit(t, logger, err, zerolog.InfoLevel)
 		logger.Info().Msg(message)
 	})
 
@@ -47,17 +46,13 @@ func TestInit(t *testing.T) {
 		out := &bytes.Buffer{}
 		logger, err := Init(InitOptions{Writer: out})
 
-		assert.NilError(t, err, "No init error should be encountered")
-		assert.Equal(t, logger.GetLevel(), zerolog.InfoLevel, "Default level value")
-
+		verifyInit(t, logger, err, zerolog.InfoLevel)
 		logger.Info().Msg(message)
 
 		result := miaLog{}
 		assert.NilError(t, json.Unmarshal(out.Bytes(), &result))
 
-		assert.Equal(t, result.Level, string(pinoModel.PinoInfo), "Message level is correctly converted")
-		assert.Equal(t, result.Msg, message)
-		assert.Equal(t, len(strconv.Itoa(result.Time)), 10, "Time is an Unix timestamp")
+		verifyLog(t, &result, message, string(pinoModel.PinoInfo), unixTimestampLen)
 	})
 
 	t.Run("Initialize a Logger with custom log level", func(t *testing.T) {
@@ -68,10 +63,7 @@ func TestInit(t *testing.T) {
 			Writer: out,
 		})
 
-		assert.NilError(t, err, "No init error should be encountered")
-		assert.Equal(t, logger.GetLevel(), zerolog.ErrorLevel, "Default level value")
-
-		message := "Hello Mia!"
+		verifyInit(t, logger, err, zerolog.ErrorLevel)
 		logger.Info().Msg(message)
 
 		assert.Equal(t, out.Len(), 0, "No output should be produced due to msg logged using lower level than enabled one")
@@ -100,16 +92,27 @@ func TestInit(t *testing.T) {
 			UseTimeMs: true,
 		})
 
-		assert.NilError(t, err, "No init error should be encountered")
-		assert.Equal(t, logger.GetLevel(), zerolog.WarnLevel, "Default level value")
-
+		verifyInit(t, logger, err, zerolog.WarnLevel)
 		logger.Warn().Msg(message)
 
 		result := miaLog{}
 		assert.NilError(t, json.Unmarshal(out.Bytes(), &result))
 
-		assert.Equal(t, result.Level, string(pinoModel.PinoWarn), "Message level is correctly converted")
-		assert.Equal(t, result.Msg, message)
-		assert.Equal(t, len(strconv.Itoa(result.Time)), 13, "Time is an Unix timestamp in milliseconds")
+		verifyLog(t, &result, message, string(pinoModel.PinoWarn), unixTimestampMsLen)
 	})
+}
+
+func verifyLog(t testing.TB, log *miaLog, msg, level string, timeLen int) {
+	t.Helper()
+
+	assert.Equal(t, level, log.Level, "Message level is correctly converted")
+	assert.Equal(t, msg, log.Msg)
+	assert.Equal(t, timeLen, len(strconv.Itoa(log.Time)), "Time is an Unix timestamp of specified length")
+}
+
+func verifyInit(t testing.TB, logger *zerolog.Logger, err error, expected zerolog.Level) {
+	t.Helper()
+
+	assert.NilError(t, err, "No init error should be encountered")
+	assert.Equal(t, expected, logger.GetLevel(), "Level value")
 }

@@ -17,3 +17,7 @@
 # Editors
 .idea
 .vscode
+
+# Other files
+*.log
+coverage.out

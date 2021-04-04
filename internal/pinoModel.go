@@ -40,6 +40,10 @@ func ConvertLevel(level zerolog.Level) string {
 		pinoLevel = PinoFatal
 	case zerolog.PanicLevel:
 		pinoLevel = PinoPanic
+	case zerolog.Disabled:
+		fallthrough
+	case zerolog.NoLevel:
+		fallthrough
 	default:
 		return ""
 	}
