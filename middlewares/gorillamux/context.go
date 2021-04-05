@@ -1,16 +1,18 @@
-package zeropino
+package gorillamux
 
 import (
 	"context"
 
 	"github.com/rs/zerolog"
+
+	zp "github.com/danibix95/zeropino"
 )
 
 // heavily inspired by https://github.com/mia-platform/glogger/blob/master/context.go
 
 type loggerKey struct{}
 
-var defaultLogger *zerolog.Logger = InitDefault()
+var defaultLogger *zerolog.Logger = zp.InitDefault()
 
 // WithLogger returns a new context with the provided logger. Use in
 // combination with logger.WithField(s) for great effect.

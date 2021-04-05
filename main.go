@@ -22,7 +22,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 
-	pinoModel "github.com/danibix95/zeropino/internal"
+	pino "github.com/danibix95/zeropino/internal/model"
 )
 
 // InitOptions These are the possible options that can be used to initialize the logger
@@ -39,7 +39,7 @@ func Init(options InitOptions) (*zerolog.Logger, error) {
 		logWriter = options.Writer
 	}
 
-	logLevel, err := pinoModel.ParseLevel(options.Level)
+	logLevel, err := pino.ParseLevel(options.Level)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func InitDefault() *zerolog.Logger {
 func createLogger(writer io.Writer, level zerolog.Level, useTimeMs bool) *zerolog.Logger {
 	// global default configuration
 	zerolog.MessageFieldName = "msg"
-	zerolog.LevelFieldMarshalFunc = pinoModel.ConvertLevel
+	zerolog.LevelFieldMarshalFunc = pino.ConvertLevel
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix

@@ -1,4 +1,4 @@
-package internal
+package model
 
 import (
 	"fmt"
@@ -13,13 +13,13 @@ type PinoLevel string
 // Represents all the Pino log levels accepted
 // Note: the Panic level has been added to cover this log level not available in Javascript
 const (
-	PinoTrace PinoLevel = "10"
-	PinoDebug PinoLevel = "20"
-	PinoInfo  PinoLevel = "30"
-	PinoWarn  PinoLevel = "40"
-	PinoError PinoLevel = "50"
-	PinoFatal PinoLevel = "60"
-	PinoPanic PinoLevel = "70"
+	Trace PinoLevel = "10"
+	Debug PinoLevel = "20"
+	Info  PinoLevel = "30"
+	Warn  PinoLevel = "40"
+	Error PinoLevel = "50"
+	Fatal PinoLevel = "60"
+	Panic PinoLevel = "70"
 )
 
 // ConvertLevel Convert a zerolog log level into the corresponding pino one
@@ -27,19 +27,19 @@ func ConvertLevel(level zerolog.Level) string {
 	var pinoLevel PinoLevel
 	switch level {
 	case zerolog.TraceLevel:
-		pinoLevel = PinoTrace
+		pinoLevel = Trace
 	case zerolog.DebugLevel:
-		pinoLevel = PinoDebug
+		pinoLevel = Debug
 	case zerolog.InfoLevel:
-		pinoLevel = PinoInfo
+		pinoLevel = Info
 	case zerolog.WarnLevel:
-		pinoLevel = PinoWarn
+		pinoLevel = Warn
 	case zerolog.ErrorLevel:
-		pinoLevel = PinoError
+		pinoLevel = Error
 	case zerolog.FatalLevel:
-		pinoLevel = PinoFatal
+		pinoLevel = Fatal
 	case zerolog.PanicLevel:
-		pinoLevel = PinoPanic
+		pinoLevel = Panic
 	case zerolog.Disabled:
 		fallthrough
 	case zerolog.NoLevel:

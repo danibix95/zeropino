@@ -1,9 +1,10 @@
-package zeropino
+package gorillamux
 
 import (
 	"context"
 	"testing"
 
+	zp "github.com/danibix95/zeropino"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,7 +19,7 @@ func TestWithLogger(t *testing.T) {
 
 	t.Run("Test WithLogger when a logger is given", func(t *testing.T) {
 		ctx := context.TODO()
-		log := InitDefault()
+		log := zp.InitDefault()
 
 		ctx = WithLogger(ctx, log)
 		contextLog := ctx.Value(loggerKey{})
@@ -39,7 +40,7 @@ func TestGet(t *testing.T) {
 
 	t.Run("Test Get context when a logger was set", func(t *testing.T) {
 		ctx := context.TODO()
-		contextLogger, err := Init(InitOptions{Level: "debug"})
+		contextLogger, err := zp.Init(zp.InitOptions{Level: "debug"})
 		assert.Nil(t, err)
 
 		ctx = context.WithValue(ctx, loggerKey{}, contextLogger)

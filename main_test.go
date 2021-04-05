@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"gotest.tools/assert"
 
-	pinoModel "github.com/danibix95/zeropino/internal"
+	pino "github.com/danibix95/zeropino/internal/model"
 )
 
 type miaLog struct {
@@ -52,7 +52,7 @@ func TestInit(t *testing.T) {
 		result := miaLog{}
 		assert.NilError(t, json.Unmarshal(out.Bytes(), &result))
 
-		verifyLog(t, &result, message, string(pinoModel.PinoInfo), unixTimestampLen)
+		verifyLog(t, &result, message, string(pino.Info), unixTimestampLen)
 	})
 
 	t.Run("Initialize a Logger with custom log level", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestInit(t *testing.T) {
 		result := miaLog{}
 		assert.NilError(t, json.Unmarshal(out.Bytes(), &result))
 
-		verifyLog(t, &result, message, string(pinoModel.PinoWarn), unixTimestampMsLen)
+		verifyLog(t, &result, message, string(pino.Warn), unixTimestampMsLen)
 	})
 }
 
