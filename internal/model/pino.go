@@ -69,6 +69,8 @@ func ParseLevel(level string) (zerolog.Level, error) {
 			return zerolog.FatalLevel, nil
 		case "panic":
 			return zerolog.PanicLevel, nil
+		case "silent":
+			return zerolog.Disabled, nil
 		default:
 			return zerolog.NoLevel, fmt.Errorf("level %s is not recognized", level)
 		}

@@ -6,9 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Initial release provides
 - changelog
 - pre-commit configuration
 - custom default logger following Mia Platform logging guidelines
 - tests to verify custom logger behaviour
 - LICENSE
+- gorilla mux middleware adapted from [glogger](https://github.com/mia-platform/glogger)
