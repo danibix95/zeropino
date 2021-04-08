@@ -31,6 +31,7 @@ import (
 
 	zp "github.com/danibix95/zeropino"
 	pino "github.com/danibix95/zeropino/internal/model"
+	types "github.com/danibix95/zeropino/middlewares"
 )
 
 const hostname = "my-host.com"
@@ -47,20 +48,6 @@ type ExpectedLogFields struct {
 	Level     string
 	RequestID string
 	Message   string
-}
-
-type MiddlewareLog struct {
-	Level        string      `json:"level,omitempty"`
-	Pid          int         `json:"pid,omitempty"`
-	Hostname     string      `json:"hostname,omitempty"`
-	Time         int         `json:"time,omitempty"`
-	Msg          string      `json:"msg,omitempty"`
-	Stack        interface{} `json:"error,omitempty"`
-	RequestID    string      `json:"reqId,omitempty"`
-	HTTP         HTTP        `json:"http,omitempty"`
-	URL          URL         `json:"url,omitempty"`
-	Host         Host        `json:"host,omitempty"`
-	ResponseTime float64     `json:"responseTime,omitempty"`
 }
 
 type ExpectedIncomingLogFields struct {
@@ -109,7 +96,6 @@ func TestLogMiddleware(t *testing.T) {
 		buffer := testMockMiddlewareInvocation(handler, "", logger, "")
 
 		entries := strings.Split(strings.TrimSpace(buffer.String()), "\n")
-		fmt.Println(buffer)
 		assert.Equal(t, len(entries), 3, "Number of logs is not 4 - %q", entries)
 
 		for _, value := range entries {
@@ -443,8 +429,8 @@ func testMockMiddlewareInvocation(next http.HandlerFunc, requestID string,
 	return buffer
 }
 
-func assertJSON(t *testing.T, str string) MiddlewareLog {
-	var properties MiddlewareLog
+func assertJSON(t *testing.T, str string) types.MiddlewareLog {
+	var properties types.MiddlewareLog
 
 	err := json.Unmarshal([]byte(str), &properties)
 	assert.Equal(t, err, nil, "log %q is not expected JSON", str)

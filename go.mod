@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/gofiber/fiber/v2 v2.7.1
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
