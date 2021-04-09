@@ -26,11 +26,11 @@ import (
 	pino "github.com/danibix95/zeropino/internal/model"
 )
 
-// InitOptions These are the possible options that can be used to initialize the logger
+// InitOptions are the possible options that can be used to initialize the logger
 type InitOptions struct {
-	Level     string
-	UseTimeMs bool
-	Writer    io.Writer
+	Level         string
+	DisableTimeMs bool
+	Writer        io.Writer
 }
 
 // Init Creates a zerolog logger with custom default properties and custom style
@@ -45,7 +45,7 @@ func Init(options InitOptions) (*zerolog.Logger, error) {
 		return nil, err
 	}
 
-	return createLogger(logWriter, logLevel, options.UseTimeMs), nil
+	return createLogger(logWriter, logLevel, options.DisableTimeMs), nil
 }
 
 // InitDefault Creates a zerolog logger with custom default properties
@@ -54,15 +54,15 @@ func InitDefault() *zerolog.Logger {
 	return createLogger(os.Stdout, zerolog.InfoLevel, false)
 }
 
-func createLogger(writer io.Writer, level zerolog.Level, useTimeMs bool) *zerolog.Logger {
+func createLogger(writer io.Writer, level zerolog.Level, disableTimeMs bool) *zerolog.Logger {
 	// global default configuration
 	zerolog.MessageFieldName = "msg"
 	zerolog.LevelFieldMarshalFunc = pino.ConvertLevel
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	if useTimeMs {
-		zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
+	if disableTimeMs {
+		zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	}
 
 	// ignore hostname in case of error

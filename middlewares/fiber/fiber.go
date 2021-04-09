@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// RequestLogger logs details about incoming requests with a trace level
 func RequestLogger(logger *zerolog.Logger) func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		child := logger.With().Str("reqId", c.Get("x-request-id")).Logger()
@@ -37,6 +38,8 @@ func RequestLogger(logger *zerolog.Logger) func(*fiber.Ctx) error {
 	}
 }
 
+// ResponseLogger logs details about outgoing responses with an info level.
+// In order to work properly with fiber, previous routes must call fiber.Ctx.Next() method
 func ResponseLogger(logger *zerolog.Logger) func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		child, ok := c.Locals("log").(*zerolog.Logger)

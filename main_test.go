@@ -38,7 +38,7 @@ type miaLog struct {
 	Stack    interface{} `json:"error,omitempty"`
 }
 
-const message = "Hello Mia!"
+const message = "Follow the spiders!"
 const unixTimestampLen = 10
 const unixTimestampMsLen = 13
 
@@ -68,11 +68,10 @@ func TestInit(t *testing.T) {
 		result := miaLog{}
 		assert.NilError(t, json.Unmarshal(out.Bytes(), &result))
 
-		verifyLog(t, &result, message, string(pino.Info), unixTimestampLen)
+		verifyLog(t, &result, message, string(pino.Info), unixTimestampMsLen)
 	})
 
 	t.Run("Initialize a Logger with custom log level", func(t *testing.T) {
-		// passing a buffer allows to read what the logger is actually outputting
 		out := &bytes.Buffer{}
 		logger, err := Init(InitOptions{
 			Level:  "error",
@@ -86,7 +85,6 @@ func TestInit(t *testing.T) {
 	})
 
 	t.Run("Initialize a Logger with unrecognized log level", func(t *testing.T) {
-		// passing a buffer allows to read what the logger is actually outputting
 		out := &bytes.Buffer{}
 		levelString := "custom"
 		logger, err := Init(InitOptions{
@@ -99,13 +97,12 @@ func TestInit(t *testing.T) {
 		assert.Equal(t, logger, emptyPointer)
 	})
 
-	t.Run("Initialize a Logger with timestamp in milliseconds", func(t *testing.T) {
-		// passing a buffer allows to read what the logger is actually outputting
+	t.Run("Initialize a Logger with timestamp in seconds instead of the milliseconds default", func(t *testing.T) {
 		out := &bytes.Buffer{}
 		logger, err := Init(InitOptions{
-			Writer:    out,
-			Level:     "warn",
-			UseTimeMs: true,
+			Writer:        out,
+			Level:         "warn",
+			DisableTimeMs: true,
 		})
 
 		verifyInit(t, logger, err, zerolog.WarnLevel)
@@ -114,7 +111,7 @@ func TestInit(t *testing.T) {
 		result := miaLog{}
 		assert.NilError(t, json.Unmarshal(out.Bytes(), &result))
 
-		verifyLog(t, &result, message, string(pino.Warn), unixTimestampMsLen)
+		verifyLog(t, &result, message, string(pino.Warn), unixTimestampLen)
 	})
 }
 
