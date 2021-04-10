@@ -46,3 +46,5 @@ issues:
         - errcheck
         - dupl
         - funlen
+        - unparam
+        - bodyclose

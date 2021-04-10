@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package gorillamux
+package middleware
 
 import (
 	"context"
@@ -23,19 +23,43 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gofiber/adaptor/v2"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 )
 
+const million float64 = 1000000
 const (
-	forwardedHostHeaderKey = "x-forwarded-host"
-	forwardedForHeaderKey  = "x-forwarded-for"
+	contentLengthHeaderKey = "Content-Length"
+	requestIDHeaderKey     = "X-Request-Id"
+	forwardedHostHeaderKey = "X-Forwarded-Host"
+	forwardedForHeaderKey  = "X-Forwarded-For"
 )
 
-// RequestMiddlewareLogger is a gorilla/mux middleware to log all requests with logrus
+// FiberMiddlewareLogger
+func FiberMiddlewareLogger(l *zerolog.Logger) func(*fiber.Ctx) error {
+	return adaptor.HTTPMiddleware(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+
+			child := l.With().Str("reqId", r.Header.Get(requestIDHeaderKey)).Logger()
+			ctx := WithLogger(r.Context(), &child)
+			customRW := readableResponseWriter{writer: w, statusCode: http.StatusOK}
+
+			logIncoming(ctx, r)
+
+			h.ServeHTTP(&customRW, r.WithContext(ctx))
+
+			logOutgoing(ctx, r, &customRW, start)
+		})
+	})
+}
+
+// MuxMiddlewareLogger is a gorilla/mux middleware to log all requests with zeropino
 // It logs the incoming request and when request is completed, adding latency of the request
-func RequestMiddlewareLogger(logger *zerolog.Logger, excludedPrefix []string) mux.MiddlewareFunc {
+func MuxMiddlewareLogger(logger *zerolog.Logger, excludedPrefix []string) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
@@ -43,21 +67,21 @@ func RequestMiddlewareLogger(logger *zerolog.Logger, excludedPrefix []string) mu
 			requestID := getReqID(logger, r.Header)
 			reqLogger := logger.With().Str("reqId", requestID).Logger()
 			ctx := WithLogger(r.Context(), &reqLogger)
-			myw := readableResponseWriter{writer: w, statusCode: http.StatusOK}
+			customRW := readableResponseWriter{writer: w, statusCode: http.StatusOK}
 
 			// Skip logging for excluded routes
 			for _, prefix := range excludedPrefix {
 				if strings.HasPrefix(r.URL.RequestURI(), prefix) {
-					next.ServeHTTP(&myw, r.WithContext(ctx))
+					next.ServeHTTP(&customRW, r.WithContext(ctx))
 					return
 				}
 			}
 
 			logIncoming(ctx, r)
 
-			next.ServeHTTP(&myw, r.WithContext(ctx))
+			next.ServeHTTP(&customRW, r.WithContext(ctx))
 
-			logOutgoing(ctx, r, myw, start)
+			logOutgoing(ctx, r, &customRW, start)
 		})
 	}
 }
@@ -68,7 +92,7 @@ func logIncoming(ctx context.Context, r *http.Request) {
 			Dict("request", zerolog.Dict().
 				Str("method", r.Method).
 				Dict("userAgent", zerolog.Dict().
-					Str("original", r.Header.Get("user-agent")),
+					Str("original", r.UserAgent()),
 				),
 			),
 		).
@@ -83,13 +107,13 @@ func logIncoming(ctx context.Context, r *http.Request) {
 		Msg("incoming request")
 }
 
-func logOutgoing(ctx context.Context, r *http.Request, myw readableResponseWriter, start time.Time) {
+func logOutgoing(ctx context.Context, r *http.Request, myw *readableResponseWriter, start time.Time) {
 	Get(ctx).Info().
 		Dict("http", zerolog.Dict().
 			Dict("request", zerolog.Dict().
 				Str("method", r.Method).
 				Dict("userAgent", zerolog.Dict().
-					Str("original", r.Header.Get("user-agent")),
+					Str("original", r.UserAgent()),
 				),
 			).
 			Dict("response", zerolog.Dict().
@@ -107,7 +131,7 @@ func logOutgoing(ctx context.Context, r *http.Request, myw readableResponseWrite
 			Str("forwardedHost", r.Header.Get(forwardedHostHeaderKey)).
 			Str("ip", r.Header.Get(forwardedForHeaderKey)),
 		).
-		Float64("responseTime", float64(time.Since(start).Milliseconds())).
+		Float64("responseTime", float64(time.Since(start).Nanoseconds())/million).
 		Msg("request completed")
 }
 
@@ -115,17 +139,17 @@ func removePort(host string) string {
 	return strings.Split(host, ":")[0]
 }
 
-func getBodyLength(myw readableResponseWriter) int {
-	if content := myw.Header().Get("Content-Length"); content != "" {
+func getBodyLength(customRW *readableResponseWriter) int {
+	if content := customRW.Header().Get(contentLengthHeaderKey); content != "" {
 		if length, err := strconv.Atoi(content); err == nil {
 			return length
 		}
 	}
-	return myw.Length()
+	return customRW.Length()
 }
 
 func getReqID(logger *zerolog.Logger, headers http.Header) string {
-	if requestID := headers.Get("X-Request-Id"); requestID != "" {
+	if requestID := headers.Get(requestIDHeaderKey); requestID != "" {
 		return requestID
 	}
 
