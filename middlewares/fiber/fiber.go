@@ -8,6 +8,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
+const million float64 = 1000000
+
 // RequestLogger logs details about incoming requests with a trace level
 func RequestLogger(logger *zerolog.Logger) func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
@@ -83,7 +85,7 @@ func removePort(host string) string {
 
 func getResponseTime(start interface{}) float64 {
 	if startTime, isTime := start.(time.Time); isTime {
-		return float64(time.Since(startTime).Nanoseconds()) / 1000000
+		return float64(time.Since(startTime).Nanoseconds()) / million
 	}
 
 	// do not provide any relevant information about response time

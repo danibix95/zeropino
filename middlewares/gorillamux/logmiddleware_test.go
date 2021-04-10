@@ -396,6 +396,35 @@ func TestLogMiddleware(t *testing.T) {
 	})
 }
 
+func BenchmarkMuxMiddleware(b *testing.B) {
+	logger, _ := zp.Init(zp.InitOptions{Level: "trace"})
+
+	const requestID string = "req-id"
+
+	// prepare the request
+	request := httptest.NewRequest("GET", defaultRequestPath, nil)
+	ip := removePort(request.RemoteAddr)
+	request.Header.Set("x-request-id", requestID)
+	request.Header.Set("user-agent", userAgent)
+	request.Header.Set("x-forwarded-for", ip)
+	request.Header.Set("x-forwarded-host", clientHost)
+
+	// prepare the server
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	})
+	handler := RequestMiddlewareLogger(logger, []string{"/-/"})
+	// invoke the handler
+	server := handler(next)
+	// Create a response writer
+	writer := httptest.NewRecorder()
+
+	for i := 0; i < b.N; i++ {
+		// Serve HTTP server
+		server.ServeHTTP(writer, request)
+	}
+}
+
 func testMockMiddlewareInvocation(next http.HandlerFunc, requestID string,
 	logger *zerolog.Logger, requestPath string) *bytes.Buffer {
 	buffer := &bytes.Buffer{}

@@ -192,6 +192,26 @@ func TestResponseLogger(t *testing.T) {
 	})
 }
 
+func BenchmarkFiberMiddleware(b *testing.B) {
+	logger, _ := zp.Init(zp.InitOptions{Level: "trace"})
+
+	before := RequestLogger(logger)
+	after := ResponseLogger(logger)
+
+	app := fiberAppBeforeAfter(before, after)
+
+	request := httptest.NewRequest(method, fmt.Sprintf("%s%s", baseURL, requestPath), nil)
+	ip := removePort(request.RemoteAddr)
+	request.Header.Set("x-request-id", requestID)
+	request.Header.Set("user-agent", userAgent)
+	request.Header.Set("x-forwarded-for", ip)
+	request.Header.Set("x-forwarded-host", clientHost)
+
+	for i := 0; i < b.N; i++ {
+		app.Test(request, testTimeout)
+	}
+}
+
 func assertLog(t testing.TB, expected logFields, actual *bytes.Buffer) {
 	t.Helper()
 

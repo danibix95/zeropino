@@ -115,6 +115,14 @@ func TestInit(t *testing.T) {
 	})
 }
 
+func BenchmarkLogger(b *testing.B) {
+	logger, _ := Init(InitOptions{Level: "trace"})
+
+	for i := 0; i < b.N; i++ {
+		logger.Warn().Msg(message)
+	}
+}
+
 func verifyLog(t testing.TB, log *miaLog, msg, level string, timeLen int) {
 	t.Helper()
 
