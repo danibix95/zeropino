@@ -83,8 +83,7 @@ import (
 func main() {
   app := fiber.New()
 
-  logger, err := zeropino.Init(zeropino.InitOptions{Level: "trace"})
-  // handle err here
+  logger, _ := zeropino.Init(zeropino.InitOptions{Level: "trace"})
 
   // add the zeropino request logger
   app.Use(zpfiber.RequestLogger(logger))
@@ -92,15 +91,26 @@ func main() {
   // insert your routes below
   // note: they need to call c.Next(), otherwise
   // the ResponseLogger middleware is not called
-  app.Get(requestPath, func(c *fiber.Ctx) error {
+  app.Get("/welcome", func(c *fiber.Ctx) error {
     err := c.JSON(fiber.Map{"msg": "Hello, World!"})
-    // handle err here
+    if err != nil {
+      return err
+    }
 
     return c.Next()
   })
 
   // add zeropino custom response logger
   app.Use(zpfiber.ResponseLogger(logger))
+
+  app.Use(func (c *fiber.Ctx) error {
+    return nil
+  })
+
+
+  if err := app.Listen(":3000"); err != nil {
+    logger.Fatal().Err(err).Msg("terminating app")
+  }
 
 
   app.Listen(":3000")
