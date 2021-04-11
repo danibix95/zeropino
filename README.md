@@ -96,8 +96,6 @@ func main() {
   if err := app.Listen(":3000"); err != nil {
     logger.Fatal().Err(err).Msg("terminating app")
   }
-
-  app.Listen(":3000")
 }
 ```
 
@@ -137,6 +135,7 @@ Here is provided an example of how to use the Zeropino `RequestLogger` middlewar
 package main
 
 import (
+  "fmt"
   "net/http"
 
   "github.com/gorilla/mux"
@@ -153,7 +152,7 @@ func main() {
   router.Use(zpmux.RequestLogger(logger, []string{"/-/"}))
 
   router.HandleFunc("/welcome", func(w http.ResponseWriter, req *http.Request) {
-    w.Write("Hello, World!")
+    fmt.Fprint(w, "Hello, World!")
   })
 
   server := &http.Server{
