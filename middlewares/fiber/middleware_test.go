@@ -146,6 +146,38 @@ func TestRequestLogger(t *testing.T) {
 		assertResponseLog(t, expected, buffer)
 	})
 
+	t.Run("also query params are logged in the path property", func(t *testing.T) {
+		buffer := &bytes.Buffer{}
+		logger, _ := zp.Init(zp.InitOptions{Level: "debug", Writer: buffer})
+
+		middleware := RequestLogger(logger)
+		app := createFiberApp(t, middleware, fiber.StatusTeapot, noContentLength)
+
+		const query = "?test=yep"
+		request := getRequestWithHeaders(method, fmt.Sprintf("%s%s", defaultRequestURL, query), nil)
+
+		response, err := app.Test(request, requestTimeoutMs)
+		require.Nil(t, err)
+		response.Body.Close()
+
+		entries := strings.Split(strings.TrimSpace(buffer.String()), "\n")
+		require.Equal(t, 1, len(entries))
+
+		expected := logFields{
+			Level:         string(pino.Info),
+			Msg:           "request completed",
+			RequestID:     requestID,
+			Method:        method,
+			Original:      userAgent,
+			Path:          fmt.Sprintf("%s%s", requestPath, query),
+			Hostname:      hostname,
+			ForwardedHost: clientHost,
+			StatusCode:    fiber.StatusTeapot,
+			IP:            removePort(request.RemoteAddr),
+		}
+		assertResponseLog(t, expected, buffer)
+	})
+
 	t.Run("Content-Length is logged in case the header is found", func(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		logger, _ := zp.Init(zp.InitOptions{Level: "debug", Writer: buffer})

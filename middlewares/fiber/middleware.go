@@ -62,7 +62,7 @@ func logIncoming(c *fiber.Ctx) {
 			),
 		).
 		Dict("url", zerolog.Dict().
-			Str("path", c.Path()),
+			Str("path", string(c.Request().URI().RequestURI())),
 		).
 		Dict("host", zerolog.Dict().
 			Str("hostname", removePort(c.Hostname())).
@@ -89,7 +89,7 @@ func logCompleted(c *fiber.Ctx, start time.Time) {
 			),
 		).
 		Dict("url", zerolog.Dict().
-			Str("path", c.Path()),
+			Str("path", string(c.Request().URI().RequestURI())),
 		).
 		Dict("host", zerolog.Dict().
 			Str("hostname", removePort(c.Hostname())).
