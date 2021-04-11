@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/rs/zerolog"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/require"
 
 	pino "github.com/danibix95/zeropino/internal/model"
 )
@@ -46,7 +46,7 @@ func TestInit(t *testing.T) {
 	t.Run("Initialize Default Logger", func(t *testing.T) {
 		logger := InitDefault()
 
-		assert.Equal(t, logger.GetLevel(), zerolog.InfoLevel, "Default level value")
+		require.Equal(t, zerolog.InfoLevel, logger.GetLevel(), "Default level value")
 		logger.Info().Msg(message)
 	})
 
@@ -66,7 +66,7 @@ func TestInit(t *testing.T) {
 		logger.Info().Msg(message)
 
 		result := miaLog{}
-		assert.NilError(t, json.Unmarshal(out.Bytes(), &result))
+		require.Nil(t, json.Unmarshal(out.Bytes(), &result), "No error raised")
 
 		verifyLog(t, &result, message, string(pino.Info), unixTimestampMsLen)
 	})
@@ -81,7 +81,7 @@ func TestInit(t *testing.T) {
 		verifyInit(t, logger, err, zerolog.ErrorLevel)
 		logger.Info().Msg(message)
 
-		assert.Equal(t, out.Len(), 0, "No output should be produced due to msg logged using lower level than enabled one")
+		require.Equal(t, 0, out.Len(), "No output should be produced due to msg logged using lower level than enabled one")
 	})
 
 	t.Run("Initialize a Logger with unrecognized log level", func(t *testing.T) {
@@ -93,8 +93,8 @@ func TestInit(t *testing.T) {
 		})
 
 		var emptyPointer *zerolog.Logger
-		assert.Error(t, err, fmt.Sprintf("level %s is not recognized", levelString))
-		assert.Equal(t, logger, emptyPointer)
+		require.Error(t, err, fmt.Sprintf("level %s is not recognized", levelString))
+		require.Equal(t, logger, emptyPointer)
 	})
 
 	t.Run("Initialize a Logger with timestamp in seconds instead of the milliseconds default", func(t *testing.T) {
@@ -109,7 +109,7 @@ func TestInit(t *testing.T) {
 		logger.Warn().Msg(message)
 
 		result := miaLog{}
-		assert.NilError(t, json.Unmarshal(out.Bytes(), &result))
+		require.Nil(t, json.Unmarshal(out.Bytes(), &result), "No error raised")
 
 		verifyLog(t, &result, message, string(pino.Warn), unixTimestampLen)
 	})
@@ -126,14 +126,14 @@ func BenchmarkZeropino(b *testing.B) {
 func verifyLog(t testing.TB, log *miaLog, msg, level string, timeLen int) {
 	t.Helper()
 
-	assert.Equal(t, level, log.Level, "Message level is correctly converted")
-	assert.Equal(t, msg, log.Msg)
-	assert.Equal(t, timeLen, len(strconv.Itoa(log.Time)), "Time is an Unix timestamp of specified length")
+	require.Equal(t, level, log.Level, "Message level is correctly converted")
+	require.Equal(t, msg, log.Msg)
+	require.Equal(t, timeLen, len(strconv.Itoa(log.Time)), "Time is an Unix timestamp of specified length")
 }
 
 func verifyInit(t testing.TB, logger *zerolog.Logger, err error, expected zerolog.Level) {
 	t.Helper()
 
-	assert.NilError(t, err, "No init error should be encountered")
-	assert.Equal(t, expected, logger.GetLevel(), "Level value")
+	require.Nil(t, err, "No init error should be encountered")
+	require.Equal(t, expected, logger.GetLevel(), "Level value")
 }

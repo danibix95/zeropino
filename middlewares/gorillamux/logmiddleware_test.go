@@ -28,7 +28,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/require"
 
 	zp "github.com/danibix95/zeropino"
 	pino "github.com/danibix95/zeropino/internal/model"
@@ -79,10 +79,10 @@ func TestRequestLogger(t *testing.T) {
 
 		recorder := httptest.NewRecorder()
 		app.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusOK, recorder.Result().StatusCode)
+		require.Equal(t, http.StatusOK, recorder.Result().StatusCode)
 
 		entries := strings.Split(strings.TrimSpace(buffer.String()), "\n")
-		assert.Equal(t, len(entries), 2)
+		require.Equal(t, 2, len(entries))
 
 		expectedRequestLog := logFields{
 			Level:         string(pino.Trace),
@@ -124,10 +124,10 @@ func TestRequestLogger(t *testing.T) {
 
 		recorder := httptest.NewRecorder()
 		app.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusBadRequest, recorder.Result().StatusCode)
+		require.Equal(t, http.StatusBadRequest, recorder.Result().StatusCode)
 
 		entries := strings.Split(strings.TrimSpace(buffer.String()), "\n")
-		assert.Equal(t, len(entries), 1)
+		require.Equal(t, 1, len(entries))
 
 		expected := logFields{
 			Level:         string(pino.Info),
@@ -156,10 +156,10 @@ func TestRequestLogger(t *testing.T) {
 
 		recorder := httptest.NewRecorder()
 		app.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusOK, recorder.Result().StatusCode)
+		require.Equal(t, http.StatusOK, recorder.Result().StatusCode)
 
 		entries := strings.Split(strings.TrimSpace(buffer.String()), "\n")
-		assert.Equal(t, len(entries), 1)
+		require.Equal(t, 1, len(entries))
 
 		expected := logFields{
 			Level:         string(pino.Info),
@@ -188,9 +188,9 @@ func TestRequestLogger(t *testing.T) {
 
 		recorder := httptest.NewRecorder()
 		app.ServeHTTP(recorder, request)
-		assert.Equal(t, http.StatusOK, recorder.Result().StatusCode)
+		require.Equal(t, http.StatusOK, recorder.Result().StatusCode)
 
-		assert.Equal(t, 0, buffer.Len(), "no log output should be produced")
+		require.Equal(t, 0, buffer.Len(), "no log output should be produced")
 	})
 }
 
@@ -214,16 +214,16 @@ func assertRequestLog(t testing.TB, expected logFields, actual *bytes.Buffer) zp
 	var logOutput zpm.LogFormat
 	err := json.Unmarshal(actual.Bytes(), &logOutput)
 
-	assert.NilError(t, err)
-	assert.Equal(t, expected.Level, logOutput.Level)
-	assert.Equal(t, expected.Msg, logOutput.Msg)
-	assert.Equal(t, expected.RequestID, logOutput.RequestID)
-	assert.Equal(t, expected.Method, logOutput.HTTP.Request.Method)
-	assert.Equal(t, expected.Original, logOutput.HTTP.Request.UserAgent["original"])
-	assert.Equal(t, expected.Path, logOutput.URL.Path)
-	assert.Equal(t, expected.Hostname, logOutput.Host.Hostname)
-	assert.Equal(t, expected.ForwardedHost, logOutput.Host.ForwardedHost)
-	assert.Equal(t, expected.IP, logOutput.Host.IP)
+	require.Nil(t, err)
+	require.Equal(t, expected.Level, logOutput.Level)
+	require.Equal(t, expected.Msg, logOutput.Msg)
+	require.Equal(t, expected.RequestID, logOutput.RequestID)
+	require.Equal(t, expected.Method, logOutput.HTTP.Request.Method)
+	require.Equal(t, expected.Original, logOutput.HTTP.Request.UserAgent["original"])
+	require.Equal(t, expected.Path, logOutput.URL.Path)
+	require.Equal(t, expected.Hostname, logOutput.Host.Hostname)
+	require.Equal(t, expected.ForwardedHost, logOutput.Host.ForwardedHost)
+	require.Equal(t, expected.IP, logOutput.Host.IP)
 
 	return logOutput
 }
@@ -233,14 +233,14 @@ func assertResponseLog(t testing.TB, expected logFields, actual *bytes.Buffer) {
 
 	logOutput := assertRequestLog(t, expected, actual)
 
-	assert.Equal(t, expected.StatusCode, logOutput.HTTP.Response.StatusCode)
-	assert.Check(t, logOutput.ResponseTime > 0.0, "Response time is not null")
+	require.Equal(t, expected.StatusCode, logOutput.HTTP.Response.StatusCode)
+	require.Greater(t, logOutput.ResponseTime, 0.0, "Response time is not null")
 
 	if expected.Bytes >= 0 {
 		binaryData, _ := json.Marshal(logOutput.HTTP.Response.Body)
 		var structBody expectedBodyData
-		assert.NilError(t, json.Unmarshal(binaryData, &structBody))
-		assert.Equal(t, structBody.Bytes, expected.Bytes, "Body size is reported when set")
+		require.Nil(t, json.Unmarshal(binaryData, &structBody))
+		require.Equal(t, expected.Bytes, structBody.Bytes, "Body size is reported when set")
 	}
 }
 
