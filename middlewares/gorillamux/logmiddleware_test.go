@@ -14,7 +14,7 @@
  *   limitations under the License.
  */
 
-package middleware
+package gorillamux
 
 import (
 	"bytes"
@@ -23,35 +23,30 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/gorilla/mux"
 	"gotest.tools/assert"
 
 	zp "github.com/danibix95/zeropino"
 	pino "github.com/danibix95/zeropino/internal/model"
+	zpm "github.com/danibix95/zeropino/middlewares"
 )
 
 const hostname = "my-host"
 const userAgent = "goHttp"
 
-// const bodyBytes = 21
+const bodyBytes = 370
 const requestPath = "/my-req"
 const clientHost = "client-host"
 const requestID = "req-id"
-const statusCode = 418
-
-const method = "GET"
-const baseURL = "http://my-host:3000"
-
-// request timemout for tests in milliseconds
-const testTimeout = 500
-
 const doNotCheckBytes = -1
 
-var defaultRequestURL = fmt.Sprintf("%s%s", baseURL, requestPath)
+const method = "GET"
+
+var defaultRequestURL = fmt.Sprintf("http://%s:3000%s", hostname, requestPath)
 
 type logFields struct {
 	Level         string
@@ -71,20 +66,20 @@ type expectedBodyData struct {
 	Bytes int
 }
 
-func TestFiberMiddlewareLogger(t *testing.T) {
+func TestRequestLogger(t *testing.T) {
 	t.Run("trace log level - log both incoming request and response details", func(t *testing.T) {
 		// use a buffer to avoid printing the logs on screen during tests
 		buffer := &bytes.Buffer{}
 		logger, _ := zp.Init(zp.InitOptions{Level: "trace", Writer: buffer})
 
-		middleware := FiberMiddlewareLogger(logger)
-		app := createFiberApp(t, middleware)
+		middleware := RequestLogger(logger, []string{})
+		app := createMuxApp(t, middleware, http.StatusOK, false)
 
 		request := getRequestWithHeaders(method, defaultRequestURL, nil)
 
-		response, err := app.Test(request, testTimeout)
-		assert.NilError(t, err)
-		response.Body.Close()
+		recorder := httptest.NewRecorder()
+		app.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusOK, recorder.Result().StatusCode)
 
 		entries := strings.Split(strings.TrimSpace(buffer.String()), "\n")
 		assert.Equal(t, len(entries), 2)
@@ -99,9 +94,8 @@ func TestFiberMiddlewareLogger(t *testing.T) {
 			Hostname:      hostname,
 			ForwardedHost: clientHost,
 			IP:            removePort(request.RemoteAddr),
-			Bytes:         doNotCheckBytes,
 		}
-		assertLog(t, expectedRequestLog, bytes.NewBufferString(entries[0]))
+		assertRequestLog(t, expectedRequestLog, bytes.NewBufferString(entries[0]))
 
 		expectedResponseLog := logFields{
 			Level:         string(pino.Info),
@@ -113,23 +107,24 @@ func TestFiberMiddlewareLogger(t *testing.T) {
 			Hostname:      hostname,
 			ForwardedHost: clientHost,
 			IP:            removePort(request.RemoteAddr),
+			StatusCode:    http.StatusOK,
 			Bytes:         doNotCheckBytes,
 		}
-		assertLog(t, expectedResponseLog, bytes.NewBufferString(entries[1]))
+		assertResponseLog(t, expectedResponseLog, bytes.NewBufferString(entries[1]))
 	})
 
 	t.Run("log level is debug or info - log only response details", func(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		logger, _ := zp.Init(zp.InitOptions{Level: "debug", Writer: buffer})
 
-		middleware := FiberMiddlewareLogger(logger)
-		app := createFiberApp(t, middleware)
+		middleware := RequestLogger(logger, []string{})
+		app := createMuxApp(t, middleware, http.StatusBadRequest, false)
 
 		request := getRequestWithHeaders(method, defaultRequestURL, nil)
 
-		response, err := app.Test(request, testTimeout)
-		assert.NilError(t, err)
-		response.Body.Close()
+		recorder := httptest.NewRecorder()
+		app.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusBadRequest, recorder.Result().StatusCode)
 
 		entries := strings.Split(strings.TrimSpace(buffer.String()), "\n")
 		assert.Equal(t, len(entries), 1)
@@ -144,87 +139,24 @@ func TestFiberMiddlewareLogger(t *testing.T) {
 			Hostname:      hostname,
 			ForwardedHost: clientHost,
 			IP:            removePort(request.RemoteAddr),
+			StatusCode:    http.StatusBadRequest,
 			Bytes:         doNotCheckBytes,
 		}
-		assertLog(t, expected, buffer)
+		assertResponseLog(t, expected, buffer)
 	})
 
-	t.Run("log level higher than info - no log produced", func(t *testing.T) {
-		buffer := &bytes.Buffer{}
-		logger, _ := zp.Init(zp.InitOptions{Level: "warn", Writer: buffer})
-
-		middleware := FiberMiddlewareLogger(logger)
-		app := createFiberApp(t, middleware)
-
-		request := httptest.NewRequest(method, defaultRequestURL, nil)
-
-		response, err := app.Test(request, testTimeout)
-		assert.NilError(t, err)
-		response.Body.Close()
-
-		assert.Equal(t, 0, buffer.Len(), "no log output should be produced")
-	})
-}
-
-func TestMuxMiddlewareLogger(t *testing.T) {
-	t.Run("trace log level - log both incoming request and response details", func(t *testing.T) {
-		// use a buffer to avoid printing the logs on screen during tests
-		buffer := &bytes.Buffer{}
-		logger, _ := zp.Init(zp.InitOptions{Level: "trace", Writer: buffer})
-
-		middleware := MuxMiddlewareLogger(logger, []string{})
-		app := createMuxApp(t, middleware)
-
-		request := getRequestWithHeaders(method, defaultRequestURL, nil)
-
-		recorder := httptest.NewRecorder()
-		app.ServeHTTP(recorder, request)
-		assert.Equal(t, statusCode, recorder.Result().StatusCode)
-
-		entries := strings.Split(strings.TrimSpace(buffer.String()), "\n")
-		assert.Equal(t, len(entries), 2)
-
-		expectedRequestLog := logFields{
-			Level:         string(pino.Trace),
-			Msg:           "incoming request",
-			RequestID:     requestID,
-			Method:        method,
-			Original:      userAgent,
-			Path:          requestPath,
-			Hostname:      hostname,
-			ForwardedHost: clientHost,
-			IP:            removePort(request.RemoteAddr),
-			Bytes:         doNotCheckBytes,
-		}
-		assertLog(t, expectedRequestLog, bytes.NewBufferString(entries[0]))
-
-		expectedResponseLog := logFields{
-			Level:         string(pino.Info),
-			Msg:           "request completed",
-			RequestID:     requestID,
-			Method:        method,
-			Original:      userAgent,
-			Path:          requestPath,
-			Hostname:      hostname,
-			ForwardedHost: clientHost,
-			IP:            removePort(request.RemoteAddr),
-			Bytes:         doNotCheckBytes,
-		}
-		assertLog(t, expectedResponseLog, bytes.NewBufferString(entries[1]))
-	})
-
-	t.Run("log level is debug or info - log only response details", func(t *testing.T) {
+	t.Run("log Content-Length value when set", func(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		logger, _ := zp.Init(zp.InitOptions{Level: "debug", Writer: buffer})
 
-		middleware := MuxMiddlewareLogger(logger, []string{})
-		app := createMuxApp(t, middleware)
+		middleware := RequestLogger(logger, []string{})
+		app := createMuxApp(t, middleware, http.StatusOK, true)
 
 		request := getRequestWithHeaders(method, defaultRequestURL, nil)
 
 		recorder := httptest.NewRecorder()
 		app.ServeHTTP(recorder, request)
-		assert.Equal(t, statusCode, recorder.Result().StatusCode)
+		assert.Equal(t, http.StatusOK, recorder.Result().StatusCode)
 
 		entries := strings.Split(strings.TrimSpace(buffer.String()), "\n")
 		assert.Equal(t, len(entries), 1)
@@ -239,47 +171,34 @@ func TestMuxMiddlewareLogger(t *testing.T) {
 			Hostname:      hostname,
 			ForwardedHost: clientHost,
 			IP:            removePort(request.RemoteAddr),
-			Bytes:         doNotCheckBytes,
+			StatusCode:    http.StatusOK,
+			Bytes:         bodyBytes,
 		}
-		assertLog(t, expected, buffer)
+		assertResponseLog(t, expected, buffer)
 	})
 
 	t.Run("log level higher than info - no log produced", func(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		logger, _ := zp.Init(zp.InitOptions{Level: "warn", Writer: buffer})
 
-		middleware := MuxMiddlewareLogger(logger, []string{})
-		app := createMuxApp(t, middleware)
+		middleware := RequestLogger(logger, []string{})
+		app := createMuxApp(t, middleware, http.StatusOK, false)
 
 		request := httptest.NewRequest(method, defaultRequestURL, nil)
 
 		recorder := httptest.NewRecorder()
 		app.ServeHTTP(recorder, request)
-		assert.Equal(t, statusCode, recorder.Result().StatusCode)
+		assert.Equal(t, http.StatusOK, recorder.Result().StatusCode)
 
 		assert.Equal(t, 0, buffer.Len(), "no log output should be produced")
 	})
 }
 
-func BenchmarkFiberMiddlewareLogger(b *testing.B) {
+func BenchmarkRequestLogger(b *testing.B) {
 	logger, _ := zp.Init(zp.InitOptions{Level: "trace"})
 
-	middleware := FiberMiddlewareLogger(logger)
-	app := createFiberApp(b, middleware)
-
-	request := getRequestWithHeaders(method, defaultRequestURL, nil)
-
-	for i := 0; i < b.N; i++ {
-		response, _ := app.Test(request, testTimeout)
-		response.Body.Close()
-	}
-}
-
-func BenchmarkMuxMiddlewareLogger(b *testing.B) {
-	logger, _ := zp.Init(zp.InitOptions{Level: "trace"})
-
-	middleware := MuxMiddlewareLogger(logger, []string{})
-	app := createMuxApp(b, middleware)
+	middleware := RequestLogger(logger, []string{"/-/"})
+	app := createMuxApp(b, middleware, http.StatusOK, false)
 
 	request := getRequestWithHeaders(method, defaultRequestURL, nil)
 
@@ -289,10 +208,10 @@ func BenchmarkMuxMiddlewareLogger(b *testing.B) {
 	}
 }
 
-func assertLog(t testing.TB, expected logFields, actual *bytes.Buffer) {
+func assertRequestLog(t testing.TB, expected logFields, actual *bytes.Buffer) zpm.LogFormat {
 	t.Helper()
 
-	var logOutput LogFormat
+	var logOutput zpm.LogFormat
 	err := json.Unmarshal(actual.Bytes(), &logOutput)
 
 	assert.NilError(t, err)
@@ -306,6 +225,17 @@ func assertLog(t testing.TB, expected logFields, actual *bytes.Buffer) {
 	assert.Equal(t, expected.ForwardedHost, logOutput.Host.ForwardedHost)
 	assert.Equal(t, expected.IP, logOutput.Host.IP)
 
+	return logOutput
+}
+
+func assertResponseLog(t testing.TB, expected logFields, actual *bytes.Buffer) {
+	t.Helper()
+
+	logOutput := assertRequestLog(t, expected, actual)
+
+	assert.Equal(t, expected.StatusCode, logOutput.HTTP.Response.StatusCode)
+	assert.Check(t, logOutput.ResponseTime > 0.0, "Response time is not null")
+
 	if expected.Bytes >= 0 {
 		binaryData, _ := json.Marshal(logOutput.HTTP.Response.Body)
 		var structBody expectedBodyData
@@ -317,29 +247,15 @@ func assertLog(t testing.TB, expected logFields, actual *bytes.Buffer) {
 func getRequestWithHeaders(method, path string, body io.Reader) *http.Request {
 	request := httptest.NewRequest(method, path, body)
 	ip := removePort(request.RemoteAddr)
-	request.Header.Set("X-Request-Id", requestID)
+	request.Header.Set(requestIDHeaderKey, requestID)
 	request.Header.Set("User-Agent", userAgent)
-	request.Header.Set("X-Forwarded-For", ip)
-	request.Header.Set("X-Forwarded-Host", clientHost)
+	request.Header.Set(forwardedForHeaderKey, ip)
+	request.Header.Set(forwardedHostHeaderKey, clientHost)
 
 	return request
 }
 
-func createFiberApp(t testing.TB, middleware func(*fiber.Ctx) error) *fiber.App {
-	t.Helper()
-	app := fiber.New()
-
-	// apply the middleware
-	app.Use(middleware)
-
-	app.Get(requestPath, func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"msg": "Hello, World!"})
-	})
-
-	return app
-}
-
-func createMuxApp(t testing.TB, middleware mux.MiddlewareFunc) *mux.Router {
+func createMuxApp(t testing.TB, middleware mux.MiddlewareFunc, statusCode int, addContentLength bool) *mux.Router {
 	t.Helper()
 	router := mux.NewRouter()
 
@@ -353,6 +269,9 @@ func createMuxApp(t testing.TB, middleware mux.MiddlewareFunc) *mux.Router {
 
 	router.HandleFunc(requestPath, func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
+		if addContentLength {
+			w.Header().Add(contentLengthHeaderKey, strconv.Itoa(bodyBytes))
+		}
 		w.WriteHeader(statusCode)
 
 		responseBody, _ := json.Marshal(&response)

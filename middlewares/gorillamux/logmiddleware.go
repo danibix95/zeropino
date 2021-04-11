@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package middleware
+package gorillamux
 
 import (
 	"context"
@@ -23,8 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/adaptor/v2"
-	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
@@ -33,33 +31,14 @@ import (
 const million float64 = 1000000
 const (
 	contentLengthHeaderKey = "Content-Length"
-	requestIDHeaderKey     = "X-Request-Id"
+	requestIDHeaderKey     = "X-Request-ID"
 	forwardedHostHeaderKey = "X-Forwarded-Host"
 	forwardedForHeaderKey  = "X-Forwarded-For"
 )
 
-// FiberMiddlewareLogger
-func FiberMiddlewareLogger(l *zerolog.Logger) func(*fiber.Ctx) error {
-	return adaptor.HTTPMiddleware(func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-
-			child := l.With().Str("reqId", r.Header.Get(requestIDHeaderKey)).Logger()
-			ctx := WithLogger(r.Context(), &child)
-			customRW := readableResponseWriter{writer: w, statusCode: http.StatusOK}
-
-			logIncoming(ctx, r)
-
-			h.ServeHTTP(&customRW, r.WithContext(ctx))
-
-			logOutgoing(ctx, r, &customRW, start)
-		})
-	})
-}
-
-// MuxMiddlewareLogger is a gorilla/mux middleware to log all requests with zeropino
+// RequestLogger is a gorilla/mux middleware to log all requests with zeropino
 // It logs the incoming request and when request is completed, adding latency of the request
-func MuxMiddlewareLogger(logger *zerolog.Logger, excludedPrefix []string) mux.MiddlewareFunc {
+func RequestLogger(logger *zerolog.Logger, excludedPrefix []string) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()

@@ -14,7 +14,7 @@
  *   limitations under the License.
  */
 
-package middleware
+package middlewares
 
 // HTTP is the struct of the log formatter.
 type HTTP struct {

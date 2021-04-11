@@ -115,7 +115,7 @@ func TestInit(t *testing.T) {
 	})
 }
 
-func BenchmarkLogger(b *testing.B) {
+func BenchmarkZeropino(b *testing.B) {
 	logger, _ := Init(InitOptions{Level: "trace"})
 
 	for i := 0; i < b.N; i++ {
