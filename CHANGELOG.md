@@ -6,9 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.2.1] 2021-04-11
+
 ### Changes
 
 - fixed logging - path property now displays the whole request URI, not just the path component
+- added CODE_OF_CONDUCT.md
+- added CONTRIBUTING.md
+- added issues templates
 
 ## [v0.2.0] 2021-04-11
 
