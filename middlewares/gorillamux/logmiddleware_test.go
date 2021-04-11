@@ -72,7 +72,7 @@ func TestRequestLogger(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		logger, _ := zp.Init(zp.InitOptions{Level: "trace", Writer: buffer})
 
-		middleware := RequestLogger(logger, []string{})
+		middleware := RequestLogger(logger, []string{"/-/"})
 		app := createMuxApp(t, middleware, http.StatusOK, false)
 
 		request := getRequestWithHeaders(method, defaultRequestURL, nil)
@@ -117,7 +117,7 @@ func TestRequestLogger(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		logger, _ := zp.Init(zp.InitOptions{Level: "debug", Writer: buffer})
 
-		middleware := RequestLogger(logger, []string{})
+		middleware := RequestLogger(logger, []string{"/-/"})
 		app := createMuxApp(t, middleware, http.StatusBadRequest, false)
 
 		request := getRequestWithHeaders(method, defaultRequestURL, nil)
@@ -149,7 +149,7 @@ func TestRequestLogger(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		logger, _ := zp.Init(zp.InitOptions{Level: "debug", Writer: buffer})
 
-		middleware := RequestLogger(logger, []string{})
+		middleware := RequestLogger(logger, []string{"/-/"})
 		app := createMuxApp(t, middleware, http.StatusOK, true)
 
 		request := getRequestWithHeaders(method, defaultRequestURL, nil)
@@ -181,13 +181,45 @@ func TestRequestLogger(t *testing.T) {
 		buffer := &bytes.Buffer{}
 		logger, _ := zp.Init(zp.InitOptions{Level: "warn", Writer: buffer})
 
-		middleware := RequestLogger(logger, []string{})
+		middleware := RequestLogger(logger, []string{"/-/"})
 		app := createMuxApp(t, middleware, http.StatusOK, false)
 
 		request := httptest.NewRequest(method, defaultRequestURL, nil)
 
 		recorder := httptest.NewRecorder()
 		app.ServeHTTP(recorder, request)
+		require.Equal(t, http.StatusOK, recorder.Result().StatusCode)
+
+		require.Equal(t, 0, buffer.Len(), "no log output should be produced")
+	})
+
+	t.Run("skip logging certain routes", func(t *testing.T) {
+		buffer := &bytes.Buffer{}
+		logger, _ := zp.Init(zp.InitOptions{Level: "trace", Writer: buffer})
+
+		middleware := RequestLogger(logger, []string{"/-/"})
+		// prepare router with route that should not be logged
+		router := mux.NewRouter()
+		router.Use(middleware)
+
+		response := struct {
+			Status string
+		}{
+			Status: "ok",
+		}
+
+		const healthzPath = "/-/healthz"
+		router.HandleFunc(healthzPath, func(w http.ResponseWriter, req *http.Request) {
+			w.Header().Add("Content-Type", "application/json")
+			responseBody, _ := json.Marshal(&response)
+			w.Write(responseBody)
+		})
+
+		request := httptest.NewRequest(method, fmt.Sprintf("http://%s:3000%s", hostname, healthzPath), nil)
+		request.Header.Set(requestIDHeaderKey, requestID)
+
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, request)
 		require.Equal(t, http.StatusOK, recorder.Result().StatusCode)
 
 		require.Equal(t, 0, buffer.Len(), "no log output should be produced")

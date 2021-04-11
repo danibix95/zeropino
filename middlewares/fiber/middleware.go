@@ -109,7 +109,7 @@ func extractRequestID(logger *zerolog.Logger, c *fiber.Ctx) string {
 		return requestID
 	}
 
-	// Generate a random uuid string. e.g. 16c9c1f2-c001-40d3-bbfe-48857367e7b5
+	// Generate a random uuid string. e.g. b75d24cb-ea79-4100-81c0-2d594fb8018d
 	requestID, err := uuid.NewRandom()
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("error generating request id")
