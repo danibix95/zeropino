@@ -7,20 +7,20 @@
 
 Zeropino package provides a custom JSON format as a default for [zerolog][zerolog-github] logger. This log format is inspired by [Mia-Platform logging guidelines][logging-guidelines] and [glogger][glogger] logger.
 
-In addition, it draws similarities to the structure adopted by [Pino][pino-github] logger for Node JS. This allows to parse Zerolog logs by prettifiers, such as [pino-pretty][pino-pretty] library, simplifing their inspection, while preserving logger efficiency.
+In addition, it draws similarities to the structure adopted by [Pino][pino-github] logger for Node JS. This allows to parse Zerolog logs by prettifiers, such as [pino-pretty][pino-pretty] library, simplifing their inspection, while preserving logger efficiency during services opererations.
 
-Beside logger customization, Zeropino package offers middleware functions for the following frameworks:
+Besides logger customization, Zeropino package offers middleware functions for the following web frameworks:
 
 - [Fiber][fiber-github]
 - [Gorilla Mux][gorilla-mux-github]
 
 These should help integrate the custom logger within a service.
 
-# Installation
+## Installation
 
     go get -u github.com/danibix95/zeropino
 
-# Getting Started
+## Getting Started
 
 ### Basic Initialization and Usage
 
@@ -61,14 +61,12 @@ There are three main options to customize the logger:
   - `fatal`
   - `panic`
   - `silent` (no log is produced using this level)
-- `DisableTimeMs [bool]` select whether the timestamp should be in seconds rather than default format of milliseconds
+- `DisableTimeMs [bool]` select whether the Unix timestamp should be in seconds rather than default format of milliseconds
 - `Writer [io.Writer]` define which writer should be used to produce the logs
 
-# Fiber Middleware
+## Fiber Middleware
 
-Zeropino provides two middleware for fiber web framework. These two middleware are in charge of logging incoming requestes and outgoing responses. It is also  possible of adopting only one of them, although it is recommended to include both to log all the values.
-
-Here is provided an example:
+Here is provided an example of how to use the Zeropino `RequestLogger` middleware for `fiber`:
 
 ```go
 package main
@@ -76,44 +74,93 @@ package main
 import (
   "github.com/gofiber/fiber/v2"
 
-  "github.com/danibix95/zeropino"
+  zp "github.com/danibix95/zeropino"
   zpfiber "github.com/danibix95/zeropino/middlewares/fiber"
 )
 
 func main() {
   app := fiber.New()
 
-  logger, _ := zeropino.Init(zeropino.InitOptions{Level: "trace"})
+  logger, _ := zp.Init(zp.InitOptions{Level: "trace"})
 
-  // add the zeropino request logger
+  // add the zeropino request logger middleware
   app.Use(zpfiber.RequestLogger(logger))
 
-  // insert your routes below
-  // note: they need to call c.Next(), otherwise
-  // the ResponseLogger middleware is not called
   app.Get("/welcome", func(c *fiber.Ctx) error {
-    err := c.JSON(fiber.Map{"msg": "Hello, World!"})
-    if err != nil {
-      return err
-    }
-
-    return c.Next()
+    return c.JSON(fiber.Map{"msg": "Hello, World!"})
   })
-
-  // add zeropino custom response logger
-  app.Use(zpfiber.ResponseLogger(logger))
-
-  app.Use(func (c *fiber.Ctx) error {
-    return nil
-  })
-
 
   if err := app.Listen(":3000"); err != nil {
     logger.Fatal().Err(err).Msg("terminating app")
   }
 
-
   app.Listen(":3000")
+}
+```
+
+The `RequestLogger` middleware store a logger specific to each request in the fiber [Locals](https://docs.gofiber.io/api/ctx#locals) request storage. It is possible to retrieve it with `ReqLogger` method, so that it is not necessary to create a new logger withing each handler.  
+Moreover, it is possible to change the stored logger using the methods and `WithLogger`. This enables the possibility to further customize it.
+
+For example:
+```go
+// add another middleware that use injected logger an further customize it
+app.Use(func (c *fiber) error {
+  // get existing logger
+  // Note: if no logger exists, return a new zerolog Logger with
+  // the default zeropino configuration (level: info, writer: os.Stdout)
+  reqLogger := zpfiber.ReqLogger(c)
+
+  quoteLogger := reqLogger.With().Str("quote", "This is the way").Logger()
+
+  // modify the logger stored in the fiber context
+  zpfiber.WithLogger(c, &quoteLogger)
+
+  return c.Next()
+})
+
+app.Get("/quote", func (c *fiber.Ctx) error {
+  // get existing logger and log current fields
+  zpfiber.ReqLogger(c).Info().Send()
+
+  return c.JSON(fiber.Map{"msg": "a quote has been logged"})
+})
+```
+
+## Gorilla Mux Middleware
+
+Here is provided an example of how to use the Zeropino `RequestLogger` middleware for `gorilla mux`:
+
+```go
+package main
+
+import (
+  "net/http"
+
+  "github.com/gorilla/mux"
+  "github.com/danibix95/zeropino"
+  zpmux "github.com/danibix95/zeropino/middlewares/gorillamux"
+)
+
+func main() {
+  logger, _ := zeropino.Init(zeropino.InitOptions{Level: "trace"})
+
+  router := mux.NewRouter()
+
+  // add the zeropino request logger middleware
+  router.Use(zpmux.RequestLogger(logger, []string{"/-/"}))
+
+  router.HandleFunc("/welcome", func(w http.ResponseWriter, req *http.Request) {
+    w.Write("Hello, World!")
+  })
+
+  server := &http.Server{
+    Addr:    "0.0.0.0:3000",
+    Handler: router,
+  }
+
+  if err := server.ListenAndServe(); err != nil {
+    logger.Error().Err(err).Send()
+  }
 }
 ```
 

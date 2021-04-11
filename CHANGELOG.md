@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changes
 
-- improved README
+- fixed fiber middleware
+- improved tests
+- updated README
 - added benchmarks
 
 ## [v0.1.0] 2021-04-10
