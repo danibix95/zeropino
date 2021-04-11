@@ -1,7 +1,10 @@
 <div align="center">
   <h1>Zeropino</h1>
 
-  [![Test and Build Go Project][github-actions-svg]][github-actions]
+  [![Test and Build][github-actions-svg]][github-actions]
+  [![Go Report Card][goreportcard-img]][goreportcard-link]
+  [![Coverage][coverage-img]][coverage-link]
+  [![Go Reference][go-pkg.dev-img]][go-pkg.dev-link]
 
 </div>
 
@@ -166,6 +169,15 @@ func main() {
 
 [github-actions]: https://github.com/danibix95/zerolog-mia/actions/workflows/go.yml
 [github-actions-svg]: https://github.com/danibix95/zerolog-mia/actions/workflows/go.yml/badge.svg?branch=main
+
+[goreportcard-img]: https://goreportcard.com/badge/github.com/danibix95/zeropino
+[goreportcard-link]: https://goreportcard.com/report/github.com/danibix95/zeropino
+
+[go-pkg.dev-img]: https://pkg.go.dev/badge/github.com/danibix95/zeropino.svg
+[go-pkg.dev-link]: https://pkg.go.dev/github.com/danibix95/zeropino
+
+[coverage-img]: https://gocover.io/_badge/github.com/danibix95/zeropino
+[coverage-link]: https://gocover.io/github.com/danibix95/zeropino
 
 [zerolog-github]: https://github.com/rs/zerolog
 [logging-guidelines]: https://docs.mia-platform.eu/docs/getting_started/monitoring-dashboard/dev_ops_guide/log#json-logging-format
