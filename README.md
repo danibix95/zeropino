@@ -12,10 +12,10 @@ Zeropino package provides a custom JSON format as a default for [zerolog][zerolo
 
 In addition, it draws similarities to the structure adopted by [Pino][pino-github] logger for Node JS. This allows to parse Zerolog logs by prettifiers, such as [pino-pretty][pino-pretty] library, simplifing their inspection, while preserving logger efficiency during services opererations.
 
-Besides logger customization, Zeropino package offers middleware functions for the following web frameworks:
+Besides logger customization, Zeropino package offers middleware functions for the following web libraries and frameworks:
 
+- [Go `net/http` library][go-net-http]
 - [Fiber][fiber-github]
-- [Gorilla Mux][gorilla-mux-github]
 
 These should help integrate the custom logger within a service.
 
@@ -66,6 +66,48 @@ There are three main options to customize the logger:
   - `silent` (no log is produced using this level)
 - `DisableTimeMs [bool]` select whether the Unix timestamp should be in seconds rather than default format of milliseconds
 - `Writer [io.Writer]` define which writer should be used to produce the logs
+
+## Go `net/http` library
+
+Here is provided an example of how to use the Zeropino `RequestLogger` middleware for `net/http` library:
+
+```go
+package main
+
+import (
+  "fmt"
+  "net/http"
+
+  "github.com/danibix95/zeropino"
+  zpstd "github.com/danibix95/zeropino/middlewares/std"
+)
+
+func welcomeHandler() http.HandlerFunc {
+  return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+    fmt.Fprint(w, "Hello, World!")
+  })
+}
+
+func main() {
+  logger, _ := zeropino.Init(zeropino.InitOptions{Level: "trace"})
+
+  router := http.NewServeMux()
+
+  // add the zeropino request logger middleware
+  middleware := zpstd.RequestLogger(logger, []string{"/-/"})
+
+  router.Handle("/welcome", middleware(welcomeHandler()))
+
+  server := &http.Server{
+    Addr:    "0.0.0.0:3000",
+    Handler: router,
+  }
+
+  if err := server.ListenAndServe(); err != nil {
+    logger.Error().Err(err).Send()
+  }
+}
+```
 
 ## Fiber Middleware
 
@@ -127,45 +169,6 @@ app.Get("/quote", func (c *fiber.Ctx) error {
 })
 ```
 
-## Gorilla Mux Middleware
-
-Here is provided an example of how to use the Zeropino `RequestLogger` middleware for `gorilla mux`:
-
-```go
-package main
-
-import (
-  "fmt"
-  "net/http"
-
-  "github.com/gorilla/mux"
-  "github.com/danibix95/zeropino"
-  zpmux "github.com/danibix95/zeropino/middlewares/gorillamux"
-)
-
-func main() {
-  logger, _ := zeropino.Init(zeropino.InitOptions{Level: "trace"})
-
-  router := mux.NewRouter()
-
-  // add the zeropino request logger middleware
-  router.Use(zpmux.RequestLogger(logger, []string{"/-/"}))
-
-  router.HandleFunc("/welcome", func(w http.ResponseWriter, req *http.Request) {
-    fmt.Fprint(w, "Hello, World!")
-  })
-
-  server := &http.Server{
-    Addr:    "0.0.0.0:3000",
-    Handler: router,
-  }
-
-  if err := server.ListenAndServe(); err != nil {
-    logger.Error().Err(err).Send()
-  }
-}
-```
-
 [github-actions]: https://github.com/danibix95/zerolog-mia/actions/workflows/go.yml
 [github-actions-svg]: https://github.com/danibix95/zerolog-mia/actions/workflows/go.yml/badge.svg?branch=main
 
@@ -184,4 +187,4 @@ func main() {
 [pino-github]: https://github.com/pinojs/pino
 [pino-pretty]: https://github.com/pinojs/pino-pretty
 [fiber-github]: https://github.com/gofiber/fiber
-[gorilla-mux-github]: https://github.com/gorilla/mux
+[go-net-http]: https://pkg.go.dev/net/http
