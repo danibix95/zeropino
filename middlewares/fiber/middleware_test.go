@@ -229,7 +229,8 @@ func TestRequestLogger(t *testing.T) {
 }
 
 func BenchmarkRequestLogger(b *testing.B) {
-	logger, _ := zp.Init(zp.InitOptions{Level: "trace"})
+	buffer := bytes.Buffer{}
+	logger, _ := zp.Init(zp.InitOptions{Level: "trace", Writer: &buffer})
 
 	middleware := RequestLogger(logger)
 	app := createFiberApp(b, middleware, fiber.StatusOK, noContentLength)

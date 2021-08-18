@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package gorillamux
+package std
 
 import (
 	"context"
@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 )
 
@@ -38,7 +37,7 @@ const (
 
 // RequestLogger is a gorilla/mux middleware to log all requests with zeropino
 // It logs the incoming request and when request is completed, adding latency of the request
-func RequestLogger(logger *zerolog.Logger, excludedPrefix []string) mux.MiddlewareFunc {
+func RequestLogger(logger *zerolog.Logger, excludedPrefix []string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()

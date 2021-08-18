@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package gorillamux
+package std
 
 import (
 	"net/http"
