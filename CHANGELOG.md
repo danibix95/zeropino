@@ -6,9 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.0] 2021-08-18
+
+### Changed
+
+- refactored gorillamux middleware into a standard one, so that any framework
+  respecting the [`net/http`](https://pkg.go.dev/net/http) standard library
+  should be able to use zeropino as logger middleware
+- upgraded dependencies
+
 ## [v0.2.1] 2021-04-11
 
-### Changes
+### Changed
 
 - fixed logging - path property now displays the whole request URI, not just the path component
 - added CODE_OF_CONDUCT.md
@@ -17,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.2.0] 2021-04-11
 
-### Changes
+### Changed
 
 - fixed fiber middleware
 - improved tests
