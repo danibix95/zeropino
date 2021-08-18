@@ -14,7 +14,7 @@
  *   limitations under the License.
  */
 
-package gorillamux
+package std
 
 import (
 	"bytes"
@@ -27,7 +27,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 
 	zp "github.com/danibix95/zeropino"
@@ -73,7 +72,7 @@ func TestRequestLogger(t *testing.T) {
 		logger, _ := zp.Init(zp.InitOptions{Level: "trace", Writer: buffer})
 
 		middleware := RequestLogger(logger, []string{"/-/"})
-		app := createMuxApp(t, middleware, http.StatusOK, false)
+		app := createHTTPServer(t, middleware, http.StatusOK, false)
 
 		request := getRequestWithHeaders(method, defaultRequestURL, nil)
 
@@ -118,7 +117,7 @@ func TestRequestLogger(t *testing.T) {
 		logger, _ := zp.Init(zp.InitOptions{Level: "debug", Writer: buffer})
 
 		middleware := RequestLogger(logger, []string{"/-/"})
-		app := createMuxApp(t, middleware, http.StatusBadRequest, false)
+		app := createHTTPServer(t, middleware, http.StatusBadRequest, false)
 
 		request := getRequestWithHeaders(method, defaultRequestURL, nil)
 
@@ -150,7 +149,7 @@ func TestRequestLogger(t *testing.T) {
 		logger, _ := zp.Init(zp.InitOptions{Level: "debug", Writer: buffer})
 
 		middleware := RequestLogger(logger, []string{"/-/"})
-		app := createMuxApp(t, middleware, http.StatusOK, true)
+		app := createHTTPServer(t, middleware, http.StatusOK, true)
 
 		request := getRequestWithHeaders(method, defaultRequestURL, nil)
 
@@ -182,7 +181,7 @@ func TestRequestLogger(t *testing.T) {
 		logger, _ := zp.Init(zp.InitOptions{Level: "warn", Writer: buffer})
 
 		middleware := RequestLogger(logger, []string{"/-/"})
-		app := createMuxApp(t, middleware, http.StatusOK, false)
+		app := createHTTPServer(t, middleware, http.StatusOK, false)
 
 		request := httptest.NewRequest(method, defaultRequestURL, nil)
 
@@ -199,8 +198,7 @@ func TestRequestLogger(t *testing.T) {
 
 		middleware := RequestLogger(logger, []string{"/-/"})
 		// prepare router with route that should not be logged
-		router := mux.NewRouter()
-		router.Use(middleware)
+		router := http.NewServeMux()
 
 		response := struct {
 			Status string
@@ -209,11 +207,12 @@ func TestRequestLogger(t *testing.T) {
 		}
 
 		const healthzPath = "/-/healthz"
-		router.HandleFunc(healthzPath, func(w http.ResponseWriter, req *http.Request) {
+		healthHandler := func(w http.ResponseWriter, req *http.Request) {
 			w.Header().Add("Content-Type", "application/json")
 			responseBody, _ := json.Marshal(&response)
 			w.Write(responseBody)
-		})
+		}
+		router.Handle(healthzPath, middleware(http.HandlerFunc(healthHandler)))
 
 		request := httptest.NewRequest(method, fmt.Sprintf("http://%s:3000%s", hostname, healthzPath), nil)
 		request.Header.Set(requestIDHeaderKey, requestID)
@@ -227,10 +226,11 @@ func TestRequestLogger(t *testing.T) {
 }
 
 func BenchmarkRequestLogger(b *testing.B) {
-	logger, _ := zp.Init(zp.InitOptions{Level: "trace"})
+	buffer := bytes.Buffer{}
+	logger, _ := zp.Init(zp.InitOptions{Level: "trace", Writer: &buffer})
 
 	middleware := RequestLogger(logger, []string{"/-/"})
-	app := createMuxApp(b, middleware, http.StatusOK, false)
+	app := createHTTPServer(b, middleware, http.StatusOK, false)
 
 	request := getRequestWithHeaders(method, defaultRequestURL, nil)
 
@@ -287,11 +287,13 @@ func getRequestWithHeaders(method, path string, body io.Reader) *http.Request {
 	return request
 }
 
-func createMuxApp(t testing.TB, middleware mux.MiddlewareFunc, statusCode int, addContentLength bool) *mux.Router {
+func createHTTPServer(
+	t testing.TB,
+	middleware func(next http.Handler) http.Handler,
+	statusCode int,
+	addContentLength bool) *http.ServeMux {
 	t.Helper()
-	router := mux.NewRouter()
-
-	router.Use(middleware)
+	router := http.NewServeMux()
 
 	response := struct {
 		Msg string
@@ -299,7 +301,7 @@ func createMuxApp(t testing.TB, middleware mux.MiddlewareFunc, statusCode int, a
 		Msg: "Hello, World!",
 	}
 
-	router.HandleFunc(requestPath, func(w http.ResponseWriter, req *http.Request) {
+	requestHandler := func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
 		if addContentLength {
 			w.Header().Add(contentLengthHeaderKey, strconv.Itoa(bodyBytes))
@@ -309,7 +311,9 @@ func createMuxApp(t testing.TB, middleware mux.MiddlewareFunc, statusCode int, a
 		responseBody, _ := json.Marshal(&response)
 
 		w.Write(responseBody)
-	})
+	}
+
+	router.Handle(requestPath, middleware(http.HandlerFunc(requestHandler)))
 
 	return router
 }

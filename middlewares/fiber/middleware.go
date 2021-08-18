@@ -65,7 +65,7 @@ func logIncoming(c *fiber.Ctx) {
 			Str("path", string(c.Request().URI().RequestURI())),
 		).
 		Dict("host", zerolog.Dict().
-			Str("hostname", removePort(c.Hostname())).
+			Str("hostname", removePort(string(c.Context().Host()))).
 			Str("forwardedHost", c.Get(forwardedHostHeaderKey)).
 			Str("ip", c.Get(forwardedForHeaderKey)),
 		).
@@ -92,7 +92,7 @@ func logCompleted(c *fiber.Ctx, start time.Time) {
 			Str("path", string(c.Request().URI().RequestURI())),
 		).
 		Dict("host", zerolog.Dict().
-			Str("hostname", removePort(c.Hostname())).
+			Str("hostname", removePort(string(c.Context().Host()))).
 			Str("forwardedHost", c.Get(forwardedHostHeaderKey)).
 			Str("ip", c.Get(forwardedForHeaderKey)),
 		).
