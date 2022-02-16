@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- extended std http response writer adding Flush method
+
+### Changed
+
+- upgraded dependencies
+
 ## [v0.3.0] 2021-08-18
 
 ### Changed
