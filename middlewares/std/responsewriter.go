@@ -50,6 +50,12 @@ func (r *readableResponseWriter) Header() http.Header {
 	return r.writer.Header()
 }
 
+func (r *readableResponseWriter) Flush() {
+	if f, ok := r.writer.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 func (r *readableResponseWriter) Length() int {
 	return r.length
 }
